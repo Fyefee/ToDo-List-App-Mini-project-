@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="css/all.css" rel="stylesheet" />
+    <link href="css/bulma.css" rel="stylesheet" />
+    <link href="css/styles.css" rel="stylesheet" />
+    <script src="js/all.js"></script>
+    <script src="js/vue.js"></script>
+    <link rel="stylesheet" href="path/to/font-awesome/css/font-awesome.min.css">
+    <title>My ToDo List</title>
+</head>
+
+<body>
+    <section id="app" style="padding-top: 5vh; padding-bottom: 5vh;">
+        <div class="container px-5 card" style="padding-top: 4vh; padding-bottom: 4vh;">
+            <p class="title">My ToDo List
+                <span style="text-align: left; position: relative; margin-left: 12px;"
+                    @click="toggleModal('modal_add_list')">
+                    <i class="fa fa-circle fa-stack-2x" style="width: 30px; color: darkred;"></i>
+                    <i class="fa fa-plus fa-stack-1x fa-inverse" style="font-size: 18px; margin-left: 3.5px;"></i>
+                </span>
+            </p>
+            <p class="subtitle my-2">Completed: {{completed_task}}<label style="margin-left: 20px;">Incomplete: {{incompleted_task}}</label></p>
+            <p class="subtitle my-2 mb-5">Flagged: {{flagged_task}}</p>
+            <div class="columns py-5" v-for="list in todoLists" style="border-bottom: 1px solid rgb(209, 209, 209);">
+                <div class="column is-8">
+                    <p style="font-size: 25px; font-weight: 500;">{{list.name}}
+                        <span style="text-align: left; position: relative; margin-left: 12px;"
+                            @click="toggleModal_and_temp_list('modal_edit_list', list)">
+                            <i class="fa fa-circle fa-stack-2x" style="width: 25px; color: rgb(163, 129, 56);"></i>
+                            <i class="fa fa-edit fa-stack-1x fa-inverse" style="font-size: 13px; margin-left: 6px;"></i>
+                        </span>
+                        <span style="text-align: left; position: relative; margin-left: 30px;"
+                            @click="toggleModal_and_temp_list('modal_delete_list', list)">
+                            <i class="fa fa-circle fa-stack-2x" style="width: 25px; color: rgb(44, 85, 85);"></i>
+                            <i class="fa fa-trash fa-stack-1x fa-inverse" style="font-size: 13px; margin-left: 4.25px;"></i>
+                        </span>
+                    </p>
+                    <div style="max-height: 60vh; overflow: auto; padding: 5px">
+                        <div class="box level py-3 my-2 rows" :key="componentKey">
+                            <div class='row is-full my-2' v-for="task in sortTasks(list)" v-if="(task.listId == list.id) && checkHide(list, task)">
+                                <label class="checkbox" :style="[task.isComplete ? {'text-decoration' : 'line-through'} : {'text-decoration' : 'none'}, {'color' : task.color}]">
+                                    <input type="checkbox" style="margin-right: 5px;" v-model="task.isComplete" @click="forceRerender">
+                                    {{task.name}} <i class="fa fa-flag" aria-hidden="true" v-show="task.isFlag"></i> <label v-if="task.due_date != ''">(Due by {{task.due_date}})</label>
+                                </label>
+                                <div style="float: right">
+                                    <span class="icon is-small" @click="toggleModal_and_temp_task('modal_edit_task' , task)">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                    <span class="icon is-small ml-5" @click="toggleModal_and_temp_task('modal_delete_task' , task)">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-4">
+                    <div class="card mb-5">
+                        <header class="card-header" style="background-color: #e08963;">
+                            <p class="card-header-title">Filters</p>
+                            <p class="card-header-icon">
+                                <span class="card-header-icon icon">
+                                    <i class="fas fa-filter"></i>
+                                </span>
+                            </p>
+                        </header>
+                        <div class="card-content">
+                            <div class="content">
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" v-model="list.is_hide_complete" @change="forceRerender"/>
+                                        Hide completed tasks
+                                    </label>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" v-model="list.is_show_only_flag" @change="forceRerender"/>
+                                        Show only flagged tasks
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <header class="card-header" style="background-color: #ffbfa3;">
+                            <p class="card-header-title">Sort</p>
+                            <p class="card-header-icon">
+                                <span class="card-header-icon icon">
+                                    <i class="fas fa-sort"></i>
+                                </span>
+                            </p>
+                        </header>
+                        <div class="card-content">
+                            <div class="content">
+                                <div class="control">
+                                    <label class="checkbox" >
+                                        <input type="radio" value="1" v-model="list.sort_select" @change="forceRerender">
+                                        Sort alphabetically
+                                    </label>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox" >
+                                        <input type="radio" value="2" v-model="list.sort_select" @change="forceRerender">
+                                        Sort incomplete tasks first
+                                    </label>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox" >
+                                        <input type="radio" value="3" v-model="list.sort_select" @change="forceRerender">
+                                        Sort flagged task first
+                                    </label>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox" >
+                                        <input type="radio" value="4" v-model="list.sort_select" @change="forceRerender">
+                                        Sort by due date (ascending)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="py-5">
+                <p style="font-size: 20px; padding-bottom: 10px;">Add new task</p>
+                <div class="columns">
+                    <div class="column is-4">
+                        <div class="field">
+                            <div class="control">
+                                <input class="input" type="text" placeholder="Task Name" v-model="input.name"/>
+                            </div>
+                            <p style="margin: 5px 10px; color: red" v-show="input.is_task_name_empty">
+                                Please enter task name.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="select">
+                            <select v-model="input.select_list">
+                                <option value="0" selected>--Select List--</option>
+                                <option v-for="table in todoLists" :value="table.id">{{table.name}}</option>
+                            </select>
+                            <p style="margin: 5px 10px; color: red" v-show="input.is_select_list">
+                                Please select list.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="field">
+                            <div class="control">
+                                <input class="input" placeholder="Due Date" type="text" onfocus="(this.type='date')"
+                                    onblur="(this.type='text')" v-model="input.date" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="field">
+                            <div class="control mt-2">
+                                <label class="checkbox">
+                                    <input type="checkbox" v-model="input.isFlag"/>
+                                    Flag
+                                </label>
+                                <span style="text-align: left; position: relative; margin-left: 20px;"
+                                    @click="select_color(input, 1)">
+                                    <i class="fa fa-circle fa-stack-2x" style="width: 25px;"></i>
+                                    <span v-if="input.is_color1">
+                                        <i class="fa fa-check fa-stack-1x fa-inverse"
+                                            style="font-size: 13px; margin-left: 5px;"></i>
+                                    </span>
+                                </span>
+                                <span style="text-align: left; position: relative; margin-left: 40px;"
+                                    @click="select_color(input, 2)">
+                                    <i class="fa fa-circle fa-stack-2x" style="width: 25px; color: salmon;"></i>
+                                    <span v-if="input.is_color2">
+                                        <i class="fa fa-check fa-stack-1x fa-inverse"
+                                            style="font-size: 13px; margin-left: 5px;"></i>
+                                    </span>
+                                </span>
+                                <span style="text-align: left; position: relative; margin-left: 40px;"
+                                    @click="select_color(input, 3)">
+                                    <i class="fa fa-circle fa-stack-2x" style="width: 25px; color: blue;"></i>
+                                    <span v-if="input.is_color3">
+                                        <i class="fa fa-check fa-stack-1x fa-inverse"
+                                            style="font-size: 13px; margin-left: 5px;"></i>
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <button class="button is-link" @click="addTasks">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal" id="modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Edit Task</p>
+                    <button class="delete" aria-label="close"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="control">
+                        <input class="input" type="text" placeholder="Task Name" />
+                    </div>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-success">
+                        Save
+                    </button>
+                    <button class="button">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal" id="modal_delete">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <section class="modal-card-body">
+                    <div class="control">
+                        <p>Are you sure you want to delete ""?</p>
+                    </div>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-danger">
+                        Confirm
+                    </button>
+                    <button class="button">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal" id="modal_add_list" style="max-width: 100%;">
+            <div class="modal-background" @click="toggleModal('modal_add_list')"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">New List</p>
+                    <button class="delete" aria-label="close" @click="toggleModal('modal_add_list')"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="control">
+                        <input class="input" type="text" placeholder="List Name" v-model="new_list_name"/>
+                    </div>
+                    <p style="margin: 5px 10px; color: red" v-show="is_new_list_name_empty">
+                        Please enter List name.
+                    </p>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-danger" @click="add_new_list('modal_add_list')">
+                        Add
+                    </button>
+                    <button class="button" @click="toggleModal('modal_add_list')">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal" id="modal_edit_list" style="max-width: 100%;">
+            <div class="modal-background" @click="toggleModal('modal_edit_list')"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Edit List</p>
+                    <button class="delete" aria-label="close" @click="toggleModal('modal_edit_list')"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="control">
+                        <input class="input" type="text" placeholder="List Name" v-model="new_list_name"/>
+                    </div>
+                    <p style="margin: 5px 10px; color: red" v-show="is_new_list_name_empty">
+                        Please enter List name.
+                    </p>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-success" @click="edit_list_name('modal_edit_list')">
+                        Save
+                    </button>
+                    <button class="button" @click="toggleModal('modal_edit_list')">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal" id="modal_delete_list" style="max-width: 100%;">
+            <div class="modal-background" @click="toggleModal('modal_delete_list')"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Delete List</p>
+                    <button class="delete" aria-label="close" @click="toggleModal('modal_delete_list')"></button>
+                </header>
+                <section class="modal-card-body">
+                    <p>Are you sure that you want to delete "{{list_temp.name}}" list?</p>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-dark" @click="delete_list('modal_delete_list')">
+                        Delete
+                    </button>
+                    <button class="button" @click="toggleModal('modal_delete_list')">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal" id="modal_edit_task" style="max-width: 100%;">
+            <div class="modal-background" @click="toggleModal('modal_edit_task')"></div>
+            <div class="modal-card large">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Edit Task</p>
+                    <button class="delete" aria-label="close" @click="toggleModal('modal_edit_task')"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="columns">
+                        <div class="column is-4">
+                            <div class="field">
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="Task Name" v-model="input_modal.name"/>
+                                </div>
+                                <p style="margin: 5px 10px; color: red" v-show="input_modal.is_task_name_empty">
+                                    Please enter task name.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="column is-2">
+                            <div class="select">
+                                <select v-model="input_modal.listId">
+                                    <option value="0" selected>--Select List--</option>
+                                    <option v-for="table in todoLists" :value="table.id">{{table.name}}</option>
+                                </select>
+                                <p style="margin: 5px 10px; color: red;" v-show="input_modal.is_select_list">
+                                    Please select list.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="column is-2">
+                            <div class="field">
+                                <div class="control">
+                                    <input class="input" placeholder="Due Date" type="text" onfocus="(this.type='date')"
+                                        onblur="(this.type='text')" v-model="input_modal.due_date" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-4">
+                            <div class="field">
+                                <div class="control mt-2">
+                                    <label class="checkbox">
+                                        <input type="checkbox" v-model="input_modal.isFlag"/>
+                                        Flag
+                                    </label>
+                                    <span style="text-align: left; position: relative; margin-left: 20px;"
+                                        @click="select_color(input_modal, 1)">
+                                        <i class="fa fa-circle fa-stack-2x" style="width: 25px;"></i>
+                                        <span v-if="input_modal.is_color1">
+                                            <i class="fa fa-check fa-stack-1x fa-inverse"
+                                                style="font-size: 13px; margin-left: 5px;"></i>
+                                        </span>
+                                    </span>
+                                    <span style="text-align: left; position: relative; margin-left: 40px;"
+                                        @click="select_color(input_modal, 2)">
+                                        <i class="fa fa-circle fa-stack-2x" style="width: 25px; color: salmon;"></i>
+                                        <span v-if="input_modal.is_color2">
+                                            <i class="fa fa-check fa-stack-1x fa-inverse"
+                                                style="font-size: 13px; margin-left: 5px;"></i>
+                                        </span>
+                                    </span>
+                                    <span style="text-align: left; position: relative; margin-left: 40px;"
+                                        @click="select_color(input_modal, 3)">
+                                        <i class="fa fa-circle fa-stack-2x" style="width: 25px; color: blue;"></i>
+                                        <span v-if="input_modal.is_color3">
+                                            <i class="fa fa-check fa-stack-1x fa-inverse"
+                                                style="font-size: 13px; margin-left: 5px;"></i>
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-success" @click="editTasks()">
+                        Save
+                    </button>
+                    <button class="button" @click="toggleModal('modal_edit_task')">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal" id="modal_delete_task" style="max-width: 100%;">
+            <div class="modal-background" @click="toggleModal('modal_delete_task')"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Delete Task</p>
+                    <button class="delete" aria-label="close" @click="toggleModal('modal_delete_task')"></button>
+                </header>
+                <section class="modal-card-body">
+                    <p>Are you sure that you want to delete "{{input_modal.name}}" list?</p>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-dark" @click="deleteTask('modal_delete_task')">
+                        Delete
+                    </button>
+                    <button class="button" @click="toggleModal('modal_delete_task')">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+    </section>
+    <script>
+        var app = new Vue({
+            el: "#app",
+            data: {
+                list_id_now:  3,
+                task_id_now:  7,
+                new_list_name: "",
+                is_new_list_name_empty: false,
+                list_temp: {id: 0, name: ""},
+                input: {
+                    name: "",
+                    select_list: "0",
+                    date: "",
+                    isFlag: false,
+                    color: "black",
+                    is_color1: true,
+                    is_color2: false,
+                    is_color3: false,
+                    is_task_name_empty: false,
+                    is_select_list: false,
+                },
+                input_modal: {
+                    name: "",
+                    select_list: "0",
+                    date: "",
+                    isFlag: false,
+                    color: "black",
+                    is_color1: true,
+                    is_color2: false,
+                    is_color3: false,
+                    is_task_name_empty: false,
+                    is_select_list: false,
+                },
+                todoLists: [
+                    { id: 1, name: "ToDo List", sort_select: "1", is_hide_complete: false, is_show_only_flag: false},
+                    { id: 2, name: "Not ToDo List", sort_select: "1", is_hide_complete: false, is_show_only_flag: false},
+                ],
+                tasks: [
+                    { id: 1, name: "Go shopping", isComplete: false, listId: 1, color: "black", isFlag: false, due_date: ""},
+                    { id: 2, name: "Doing chores", isComplete: false, listId: 1, color: "black", isFlag: false, due_date: ""},
+                    { id: 3, name: "Doing homework", isComplete: false, listId: 1, color: "black", isFlag: false, due_date: ""},
+                    { id: 4, name: "Coding program", isComplete: false, listId: 1, color: "black", isFlag: false, due_date: ""},
+                    { id: 5, name: "Work too hard", isComplete: false, listId: 2, color: "black", isFlag: false, due_date: ""},
+                    { id: 6, name: "Play harder", isComplete: false, listId: 2, color: "black", isFlag: false, due_date: ""},
+                ],
+                componentKey: 1,
+            },
+            methods: {
+                select_color(input, num) {
+                    if (num == 1) {
+                        input.is_color1 = true;
+                        input.is_color2 = false;
+                        input.is_color3 = false;
+                        input.color = "black";
+                    }
+                    else if (num == 2) {
+                        input.is_color1 = false;
+                        input.is_color2 = true;
+                        input.is_color3 = false;
+                        input.color = "salmon";
+                    }
+                    else if (num == 3) {
+                        input.is_color1 = false;
+                        input.is_color2 = false;
+                        input.is_color3 = true;
+                        input.color = "blue";
+                    }
+                    this.forceRerender();
+                },
+                toggleModal(id) {
+                    document.getElementById(id).classList.toggle('is-active');
+                    this.new_list_name = "";
+                    this.is_new_list_name_empty = false;
+                    this.list_temp = {};
+                },
+                toggleModal_and_temp_list(id, list){
+                    this.toggleModal(id);
+                    this.list_temp = list;
+                },
+                toggleModal_and_temp_task(id, task){
+                    this.toggleModal(id);
+                    this.input_modal = Object.assign({}, task);
+                    if (this.input_modal.color == "black"){
+                        this.input_modal.is_color1 = true;
+                    }
+                    else if (this.input_modal.color == "salmon"){
+                        this.input_modal.is_color2 = true;
+                    }
+                    else if (this.input_modal.color == "blue"){
+                        this.input_modal.is_color3 = true;
+                    }
+                },
+                add_new_list(id){
+                    if (this.new_list_name.length > 0){
+                        this.todoLists.push({id: this.list_id_now, name: this.new_list_name, sort_select: "1", is_hide_complete: false, is_show_only_flag: false});
+                        this.id += 1;
+                        this.new_list_name = "";
+                        this.toggleModal(id);
+                    }
+                    else{
+                        this.is_new_list_name_empty = true;
+                    }
+                },
+                edit_list_name(id){
+                    if (this.new_list_name.length > 0){
+                        this.list_temp.name = this.new_list_name;
+                        this.toggleModal(id);
+                    }
+                    else{
+                        this.is_new_list_name_empty = true;
+                    }
+                },
+                delete_list(id){
+                    var task_to_delete = this.tasks.filter(task => task.listId == this.list_temp.id);
+                    task_to_delete.forEach(task => this.tasks.splice(this.tasks.indexOf(task), 1))
+                    this.todoLists.splice(this.todoLists.indexOf(this.list_temp), 1)
+                    this.toggleModal(id);
+                },
+                reset_task_input_modal(){
+                    this.input_modal.name = "";
+                    this.input_modal.select_list = 0;
+                    this.input_modal.color = "black";
+                    this.input_modal.isFlag = false;
+                    this.input_modal.date = "";
+                    this.input_modal.is_color1 = true;
+                    this.input_modal.is_color2 = false;
+                    this.input_modal.is_color3 = false;
+                },
+                reset_task_input(){
+                    this.input.name = "";
+                    this.input.select_list = 0;
+                    this.input.color = "black";
+                    this.input.isFlag = false;
+                    this.input.date = "";
+                    this.input.is_color1 = true;
+                    this.input.is_color2 = false;
+                    this.input.is_color3 = false;
+                },
+                addTasks(){
+                    if (this.validate_task_input(this.input)){
+                        this.tasks.push({id: this.task_id_now, name: this.input.name, isComplete: false, listId: this.input.select_list, color: this.input.color, isFlag: this.input.isFlag, due_date: this.input.date});
+                        this.task_id_now += 1;
+                        this.reset_task_input();
+                    }
+                    this.forceRerender();
+                },
+                editTasks(){
+                    if (this.validate_task_input(this.input_modal)){
+                        this.tasks.forEach(element => {
+                            if (element.id == this.input_modal.id){
+                                element = Object.assign(element, { id: this.input_modal.id, name: this.input_modal.name, isComplete: this.input_modal.isComplete, listId: this.input_modal.listId, color: this.input_modal.color, isFlag: this.input_modal.isFlag, due_date: this.input_modal.due_date});
+                            }
+                        });
+                        this.toggleModal('modal_edit_task');
+                    }
+                    this.forceRerender();
+                },
+                deleteTask(id, task){
+                    var task_to_delete = this.tasks.filter(task => task.id == this.input_modal.id);
+                    this.tasks.splice(this.tasks.indexOf(task_to_delete[0]), 1)
+                    this.toggleModal(id);
+                },
+                validate_task_input(input){
+                    if (input.name.length == 0){
+                        input.is_task_name_empty = true;
+                    }
+                    else{
+                        input.is_task_name_empty = false;
+                    }
+
+                    if (input.select_list == 0 || input.listId == 0){
+                        input.is_select_list = true;
+                    }
+                    else{
+                        input.is_select_list = false;
+                    }
+
+                    if (input.is_task_name_empty || input.is_select_list){
+                        return false;
+                    }
+                    return true;
+                },
+                sortTasks(list){
+                    var newTasks = this.sort_alphabet(this.tasks.slice());
+                    if (list.sort_select == 2){
+                        newTasks.sort(function(a,b){return a.isComplete-b.isComplete});
+                    }
+                    else if (list.sort_select == 3){
+                        newTasks.sort(function(a,b){return !a.isFlag-!b.isFlag});
+                    }
+                    else if (list.sort_select == 4){
+                        var have_date_task = newTasks.filter(task => task.due_date != "");
+                        var not_have_date_task = newTasks.filter(task => task.due_date == "");
+                        have_date_task.sort(function(a,b){return new Date(a.due_date) - new Date(b.due_date)});
+                        newTasks = have_date_task.concat(not_have_date_task);
+                    }
+                    return newTasks;
+                },
+                checkHide(list, task){
+                    if (list.is_hide_complete && task.isComplete){
+                        return false
+                    }
+                    if (list.is_show_only_flag && !task.isFlag){
+                        return false
+                    }
+                    return true;
+                },
+                sort_alphabet(array){
+                    array.sort(function(a, b){
+                        var name_a = a.name.toLowerCase();
+                        var name_b = b.name.toLowerCase();
+                        if (name_a < name_b){
+                            return -1;
+                        }
+                        if (name_a > name_b){
+                            return 1;
+                        }
+                        return 0;
+                    });
+                    return array;
+                },
+                forceRerender() {
+                    window.setTimeout(() => {
+                        this.componentKey += 1;
+                    }, 1);
+                },
+            },
+            computed: {
+                completed_task() {
+                    var result = 0;
+                    this.tasks.forEach(element => {
+                        if (element.isComplete){
+                            result += 1;
+                        }
+                    });
+                    return result;
+                },
+                incompleted_task() {
+                    return this.tasks.length - this.completed_task;
+                },
+                flagged_task() {
+                    var result = 0;
+                    this.tasks.forEach(element => {
+                        if (element.isFlag){
+                            result += 1;
+                        }
+                    });
+                    return result;
+                }
+            },
+        });
+    </script>
+</body>
+
+</html>
