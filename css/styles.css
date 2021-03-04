@@ -16,8 +16,13 @@
     }
 }
 
+html{
+    background-color: #b2ebe0;
+}
+
 #app{
     background-color: #b2ebe0;
+    height: 100%;
 }
 
 .container{
