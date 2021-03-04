@@ -482,7 +482,7 @@
                 add_new_list(id) {
                     if (this.new_list_name.length > 0) {
                         this.todoLists.push({ id: this.list_id_now, name: this.new_list_name, sort_select: "1", is_hide_complete: false, is_show_only_flag: false });
-                        this.id += 1;
+                        this.list_id_now += 1;
                         this.new_list_name = "";
                         this.toggleModal(id);
                     }
@@ -504,16 +504,6 @@
                     task_to_delete.forEach(task => this.tasks.splice(this.tasks.indexOf(task), 1))
                     this.todoLists.splice(this.todoLists.indexOf(this.list_temp), 1)
                     this.toggleModal(id);
-                },
-                reset_task_input_modal() {
-                    this.input_modal.name = "";
-                    this.input_modal.select_list = 0;
-                    this.input_modal.color = "black";
-                    this.input_modal.isFlag = false;
-                    this.input_modal.date = "";
-                    this.input_modal.is_color1 = true;
-                    this.input_modal.is_color2 = false;
-                    this.input_modal.is_color3 = false;
                 },
                 reset_task_input() {
                     this.input.name = "";
